@@ -6,28 +6,36 @@
 - **Prénom** : Mohamed
 - **École** : Paris Ynov Campus - Rendu @ynovzelab
 
-## Description du Projet
+# StreamDash v1.0
 
-Ce projet consiste en la refactorisation de l'architecture de rendu d'un dashboard analytique pour une application de gestion de projets. L'objectif est d'utiliser le **Streaming SSR** à l'aide de l'**App Router** de Next.js et de balises granulaires `<Suspense>`.
+StreamDash est un tableau de bord SaaS analytique et communautaire moderne. L'application met en œuvre une architecture de rendu asynchrone isolée utilisant les dernières spécifications de **Next.js (App Router)** couplées à un backend headless **Strapi** hautement relationnel.
 
-### Fonctionnalités Clés :
+---
 
-1. **Rendu Progressif** : Chaque bloc de données s'affiche de manière indépendante dès que ses données sont prêtes (simulé par un délai réseau).
-2. **Aucun blocage global** : La page principale ne s'interrompt pas pour attendre le composant le plus lent.
-3. **Skeleton Loaders Dédiés** : Chaque bloc affiche son propre loader animé (`animate-pulse`) pendant l'attente du fetch.
-4. **Zéro JavaScript Client pour la donnée** : Les données sont récupérées à 100% via des _Server Components_ (aucun `useEffect`, `fetch` client ou `'use client'`).
-5. **Isolation des erreurs** : Le bloc `CommentsBlock` simule une erreur serveur. Elle est interceptée localement, permettant aux 3 autres blocs de fonctionner parfaitement.
+## Stack Technique
 
-## Délais simulés
+- **Framework Frontend :** Next.js 15+ (App Router, TypeScript, Tailwind CSS)
+- **Backend Headless :** Strapi CMS (Base de données relationnelle SQLite / PostgreSQL)
+- **Authentification :** JWT sécurisé via le plugin native Strapi _Users-Permissions_
+- **Gestion du Rendu :** Streaming SSR, React Suspense Boundaries, et Server/Client Components isolés
 
-- **UsersBlock** : 1 000 ms
-- **CommentsBlock** : 1 500 ms (Simule un échec volontaire)
-- **PostsBlock** : 2 000 ms
-- **TodosBlock** : 3 000 ms
+---
 
-## Installation et Lancement
+## Fonctionnalités Majeures
 
-1. Installer les dépendances :
-   ```bash
-   npm install
-   ```
+- **Système d'Authentification Complet :** Pages d'inscription et de connexion étanches reliées au gestionnaire de jetons (JWT) de Strapi avec persistance locale sécurisée.
+- **Flux Communautaire Réactif :** Création et publication de posts en temps réel avec liaison automatique à l'utilisateur connecté (Relation `Many-to-One`).
+- **Système de Réponses Imbriquées :** Possibilité de commenter des publications spécifiques via un sélecteur dynamique lié en base de données (Relations croisées `Post ↔ Comment ↔ User`).
+- **Streaming SSR & Performance :** Chargement indépendant et progressif des blocs de données (`Users`, `Posts`, `Comments`, `Todos`) grâce à l'implémentation fine de `React.Suspense`.
+- **Modularité Client/Server :** Séparation stricte des composants pour préserver le rendu asynchrone côté serveur tout en isolant les interactions clients (comme la déconnexion ou la soumission de formulaires).
+
+---
+
+## Installation et Démarrage
+
+### 1. Cloner le projet
+
+```bash
+git clone [https://github.com/ton-username/nextjs-streaming-dashboard.git](https://github.com/ton-username/nextjs-streaming-dashboard.git)
+cd nextjs-streaming-dashboard
+```
