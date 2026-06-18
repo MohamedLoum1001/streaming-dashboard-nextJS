@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+:root {
+  background-color: #f8fafc;
+  /* Fond ardoise très clair */
+  color: #0f172a;
+  /* Texte sombre */
+}
+
+body {
+  min-height: 100vh;
+}
