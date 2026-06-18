@@ -2,10 +2,9 @@
 
 ## Informations Étudiant
 
-- **Nom** : [Ton Nom]
-- **Prénom** : [Ton Prénom]
-- **École** : Ynov - Rendu @ynovzelab
-- **Date limite** : Avant le 30 juin 2026, 23h59
+- **Nom** : LOUM
+- **Prénom** : Mohamed
+- **École** : Paris Ynov Campus - Rendu @ynovzelab
 
 ## Description du Projet
 
