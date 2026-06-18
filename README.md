@@ -36,6 +36,6 @@ StreamDash est un tableau de bord SaaS analytique et communautaire moderne. L'ap
 ### 1. Cloner le projet
 
 ```bash
-git clone [https://github.com/ton-username/nextjs-streaming-dashboard.git](https://github.com/ton-username/nextjs-streaming-dashboard.git)
-cd nextjs-streaming-dashboard
+git clone [https://github.com/MohamedLoum1001/streaming-dashboard-nextJS.git](https://github.com/MohamedLoum1001/streaming-dashboard-nextJS.git)
+cd streaming-dashboard-nextJS
 ```
