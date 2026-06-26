@@ -1,22 +1,116 @@
 // src/app/dashboard/page.tsx
-export const dynamic = "force-dynamic"; // Reste un Server Component dynamique pur
+export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
-import Navbar from "./_components/Navbar"; // On importe la Navbar isolée
+import Navbar from "./_components/Navbar";
 import UsersBlock from "./_components/UsersBlock";
 import CommentsBlock from "./_components/CommentsBlock";
 import PostsBlock from "./_components/PostsBlock";
 import TodosBlock from "./_components/TodosBlock";
 import { BlockSkeleton } from "./_components/Skeletons";
 
+// 1. Extraction du ruban KPI dans un Server Component asynchrone isolé
+async function KpiRibbon() {
+  let usersCount = 0;
+  let postsCount = 0;
+  let commentsCount = 0;
+  let todosCount = 0;
+
+  try {
+    const [resUsers, resPosts, resComments, resTodos] = await Promise.all([
+      fetch("http://localhost:1337/api/users", { cache: "no-store" }),
+      fetch("http://localhost:1337/api/posts", { cache: "no-store" }),
+      fetch("http://localhost:1337/api/comments", { cache: "no-store" }),
+      fetch("http://localhost:1337/api/todos", { cache: "no-store" }),
+    ]);
+
+    if (resUsers.ok) {
+      const usersData = await resUsers.json();
+      usersCount = usersData.length || 0;
+    }
+    if (resPosts.ok) {
+      const postsData = await resPosts.json();
+      postsCount =
+        postsData.meta?.pagination?.total || postsData.data?.length || 0;
+    }
+    if (resComments.ok) {
+      const commentsData = await resComments.json();
+      commentsCount =
+        commentsData.meta?.pagination?.total || commentsData.data?.length || 0;
+    }
+    if (resTodos.ok) {
+      const todosData = await resTodos.json();
+      todosCount =
+        todosData.meta?.pagination?.total || todosData.data?.length || 0;
+    }
+  } catch (error) {
+    console.error("Erreur lors de la récupération des KPI dynamiques:", error);
+  }
+
+  const kpis = [
+    {
+      label: "Membres Actifs",
+      value: `${usersCount} inscrit${usersCount > 1 ? "s" : ""}`,
+      color: "text-emerald-600",
+    },
+    {
+      label: "Publications",
+      value: `${postsCount} partagée${postsCount > 1 ? "s" : ""}`,
+      color: "text-indigo-600",
+    },
+    {
+      label: "Interactions",
+      value: `${commentsCount} commentaire${commentsCount > 1 ? "s" : ""}`,
+      color: "text-amber-600",
+    },
+    {
+      label: "Objectifs Pipeline",
+      value: `${todosCount} tâche${todosCount > 1 ? "s" : ""}`,
+      color: "text-violet-600",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {kpis.map((kpi, idx) => (
+        <div
+          key={idx}
+          className="rounded-xl border border-slate-200/60 bg-white p-4 shadow-2xs"
+        >
+          <p className="text-2xs font-medium uppercase tracking-wider text-slate-400">
+            {kpi.label}
+          </p>
+          <p className={`text-lg font-bold mt-1 ${kpi.color}`}>{kpi.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// 2. Squelette de chargement temporaire pour le ruban KPI
+function KpiRibbonSkeleton() {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="rounded-xl border border-slate-200/60 bg-white p-4 shadow-2xs animate-pulse"
+        >
+          <div className="h-3 w-20 bg-slate-200 rounded-sm mb-2" />
+          <div className="h-6 w-24 bg-slate-200 rounded-sm" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// 3. Page principale préservant le streaming asynchrone global
 export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50/60 text-slate-900">
-      {/* Intégration de la Navbar Client dans notre environnement Server */}
       <Navbar />
 
       <div className="p-6 md:p-12 max-w-7xl mx-auto">
-        {/* Header Section */}
         <header className="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
@@ -29,41 +123,11 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Global KPI Ribbon */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            {
-              label: "Cluster Status",
-              value: "Healthy",
-              color: "text-emerald-600",
-            },
-            {
-              label: "Data Pipeline",
-              value: "Active",
-              color: "text-indigo-600",
-            },
-            { label: "API Gateway", value: "99.98%", color: "text-slate-700" },
-            {
-              label: "Streaming Mode",
-              value: "Granular",
-              color: "text-violet-600",
-            },
-          ].map((kpi, idx) => (
-            <div
-              key={idx}
-              className="rounded-xl border border-slate-200/60 bg-white p-4 shadow-2xs"
-            >
-              <p className="text-2xs font-medium uppercase tracking-wider text-slate-400">
-                {kpi.label}
-              </p>
-              <p className={`text-lg font-bold mt-1 ${kpi.color}`}>
-                {kpi.value}
-              </p>
-            </div>
-          ))}
-        </div>
+        {/* Le ruban KPI charge de manière isolée sans bloquer le reste de la page */}
+        <Suspense fallback={<KpiRibbonSkeleton />}>
+          <KpiRibbon />
+        </Suspense>
 
-        {/* Grille de rendu des 4 blocs indépendants avec Streaming */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Suspense fallback={<BlockSkeleton />}>
             <UsersBlock />

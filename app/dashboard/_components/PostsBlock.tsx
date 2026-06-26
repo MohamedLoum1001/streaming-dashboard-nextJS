@@ -1,8 +1,11 @@
+// src/app/dashboard/_components/PostsBlock.tsx
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function PostsBlock() {
+  const router = useRouter();
   const [posts, setPosts] = useState<any[]>([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -11,8 +14,12 @@ export default function PostsBlock() {
 
   // Charger les posts et l'état utilisateur local
   const fetchPosts = async () => {
+    // Contrainte du sujet : Simulation du délai réseau de 2 secondes
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // 🔄 Correction de l'URL pour forcer Strapi à peupler entièrement la relation User imbriquée
     const res = await fetch(
-      "http://localhost:1337/api/posts?populate=*&sort=createdAt:desc",
+      "http://localhost:1337/api/posts?populate[users_permissions_user][populate]=*&sort=createdAt:desc&pagination[limit]=10",
     );
     if (res.ok) {
       const json = await res.json();
@@ -46,7 +53,8 @@ export default function PostsBlock() {
     if (res.ok) {
       setTitle("");
       setContent("");
-      fetchPosts(); // Rechargement dynamique
+      fetchPosts(); // Rechargement local immédiat de la liste
+      router.refresh(); // Force Next.js à recalculer les KPI du Server Component parent !
     }
   };
 
@@ -62,7 +70,7 @@ export default function PostsBlock() {
               Publications de la Communauté
             </h2>
             <p className="text-xs text-slate-500">
-              Exprimez-vous en temps réel
+              Exprimez-vous en temps réel (10 max)
             </p>
           </div>
         </div>
@@ -92,7 +100,7 @@ export default function PostsBlock() {
           />
           <button
             type="submit"
-            className="w-full rounded-lg bg-amber-500 hover:bg-amber-600 px-3 py-1.5 text-xs font-bold text-white transition"
+            className="w-full rounded-lg bg-amber-500 hover:bg-amber-600 px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer"
           >
             Publier sur le flux
           </button>
@@ -108,9 +116,13 @@ export default function PostsBlock() {
         {posts.length > 0 ? (
           posts.map((post: any) => {
             const attr = post.attributes ? post.attributes : post;
+
+            // Traitement robuste de l'auteur pour Strapi v4 ou v5
             const authorData =
               attr.users_permissions_user?.data?.attributes ||
-              attr.users_permissions_user?.data;
+              attr.users_permissions_user?.data ||
+              post.users_permissions_user;
+
             const authorName = authorData?.username || "Auteur anonyme";
 
             return (
