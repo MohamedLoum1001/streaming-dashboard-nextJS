@@ -1,32 +1,42 @@
 // src/app/dashboard/_components/PostsBlock.tsx
+// Obligatoire : Gère les interactions utilisateur (soumissions, états locaux de formulaires) et l'hydratation côté client
 "use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function PostsBlock() {
+  // Permet de notifier l'arborescence Next.js d'un changement de données
   const router = useRouter();
+  // États locaux (States) pour stocker les publications et les valeurs des inputs
   const [posts, setPosts] = useState<any[]>([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+
+  // États de session hydratés depuis le localStorage du navigateur
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  // Charger les posts et l'état utilisateur local
+  /**
+   * Récupération asynchrone des publications depuis Strapi
+   */
   const fetchPosts = async () => {
-    // Contrainte du sujet : Simulation du délai réseau de 2 secondes
+    // Contrainte obligatoire du sujet : Simulation d'un délai réseau de 2 secondes
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // 🔄 Correction de l'URL pour forcer Strapi à peupler entièrement la relation User imbriquée
+    // Requête Strapi : populate poussé pour lier l'auteur, tri par récence, et limite stricte aux 10 premiers éléments exigée par le sujet
     const res = await fetch(
       "http://localhost:1337/api/posts?populate[users_permissions_user][populate]=*&sort=createdAt:desc&pagination[limit]=10",
     );
     if (res.ok) {
       const json = await res.json();
+      // Stockage du tableau d'objets reçus
       setPosts(json.data);
     }
   };
 
+  /**
+   * Effet de montage : Chargement initial des données et récupération des jetons d'authentification
+   */
   useEffect(() => {
     fetchPosts();
     const storedUser = localStorage.getItem("user");
@@ -35,7 +45,11 @@ export default function PostsBlock() {
     if (storedToken) setToken(storedToken);
   }, []);
 
+  /**
+   * Soumission du formulaire : Création d'une nouvelle publication en base de données
+   */
   const handleCreatePost = async (e: React.FormEvent) => {
+    // Empêche le rechargement natif de la page HTML
     e.preventDefault();
     if (!token || !user) return alert("Vous devez être connecté !");
 
@@ -43,23 +57,31 @@ export default function PostsBlock() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        // Envoi du token JWT Strapi dans les headers de sécurité
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
+        // Payload mappant le modèle Strapi
         data: { title, content, users_permissions_user: user.id },
       }),
     });
 
     if (res.ok) {
+      // Nettoyage des champs de saisie
       setTitle("");
+      // Nettoyage des champs de saisie
       setContent("");
-      fetchPosts(); // Rechargement local immédiat de la liste
-      router.refresh(); // Force Next.js à recalculer les KPI du Server Component parent !
+      // Rechargement asynchrone local immédiat du flux de posts
+      fetchPosts();
+
+      // Crucial : Indique à Next.js de recalculer les données des Server Components parents (met à jour le compteur global du ruban KPI !)
+      router.refresh();
     }
   };
 
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-all duration-200">
+      {/* En-tête du module */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 font-bold text-lg">
@@ -76,7 +98,7 @@ export default function PostsBlock() {
         </div>
       </div>
 
-      {/* Formulaire de création de Post */}
+      {/* Formulaire protégé : Soumis à la condition d'avoir un utilisateur authentifié */}
       {user ? (
         <form
           onSubmit={handleCreatePost}
@@ -111,13 +133,14 @@ export default function PostsBlock() {
         </p>
       )}
 
-      {/* Liste des Posts */}
+      {/* Container de la liste : scroll vertical limité à 250px */}
       <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
         {posts.length > 0 ? (
           posts.map((post: any) => {
+            // Normalisation adaptative de la structure des données reçues de l'API (Strapi v4 vs v5)
             const attr = post.attributes ? post.attributes : post;
 
-            // Traitement robuste de l'auteur pour Strapi v4 ou v5
+            // Mapping robuste et sécurisé pour extraire l'username de l'auteur réel
             const authorData =
               attr.users_permissions_user?.data?.attributes ||
               attr.users_permissions_user?.data ||
@@ -130,12 +153,14 @@ export default function PostsBlock() {
                 key={post.id}
                 className="group flex flex-col gap-1.5 rounded-xl border border-slate-100 bg-slate-50/30 p-3.5 hover:border-amber-200 transition-all"
               >
+                {/* Métadonnées de l'article (Auteur et ID unique de la ligne) */}
                 <div className="flex items-center justify-between text-2xs">
                   <span className="font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
                     ✍️ {authorName}
                   </span>
                   <span className="text-slate-400">ID: #{post.id}</span>
                 </div>
+                {/* Contenu textuel */}
                 <h3 className="text-xs font-bold text-slate-800">
                   {attr.title}
                 </h3>

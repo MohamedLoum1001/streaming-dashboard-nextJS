@@ -1,25 +1,53 @@
-"use client";
+// Requis : Ce composant d'authentification manipule des états locaux (useState), gère des soumissions de formulaires et utilise le stockage local de session (localStorage)
+"use client"; 
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+/**
+ * Composant AuthPage : Gère la passerelle d'accès unifiée à l'application.
+ * Il intègre à la fois la logique de connexion (Sign In) et d'inscription (Sign Up)
+ * en commutant dynamiquement les endpoints et les structures de données envoyées à Strapi.
+ */
 export default function AuthPage() {
-  const router = useRouter();
-  const [isRegister, setIsRegister] = useState(false);
+  // Router de Next.js permettant d'effectuer la redirection vers le Dashboard
+  const router = useRouter(); 
+
+  // États de contrôle de l'interface graphique (UI)
+  // Alternance visuelle : true = Inscription, false = Connexion
+  const [isRegister, setIsRegister] = useState(false); 
+  // Bloque les double-soumissions pendant les requêtes asynchrones
+  const [loading, setLoading] = useState(false); 
+
+  // États de stockage des inputs formulaires
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(""); // État pour le message de succès d'inscription
-  const [loading, setLoading] = useState(false);
 
+  // États de notification utilisateur
+  // Capture et affiche les retours d'erreurs (ex: identifiants incorrects)
+  const [error, setError] = useState(""); 
+  // Notifie l'utilisateur de la réussite de sa création de compte
+  const [success, setSuccess] = useState(""); 
+
+  /**
+   * Gestionnaire principal de soumission du formulaire (Connexion / Inscription)
+   */
   const handleSubmit = async (e: React.FormEvent) => {
+     // Annule le comportement natif de rechargement de page du navigateur
     e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
+    // Réinitialise les erreurs précédentes
+    setError(""); 
+    // Réinitialise les messages de succès précédents
+    setSuccess(""); 
+    // Enclenche l'état de chargement visuel
+    setLoading(true); 
 
+    // Mappings dynamiques basés sur le mode sélectionné (isRegister) :
+    // 1. Endpoint ciblé sur l'API native d'authentification Strapi
     const endpoint = isRegister ? "local/register" : "local";
+
+    // 2. Format du payload JSON attendu par Strapi (Inscription : username/email vs Connexion : identifier/password)
     const body = isRegister
       ? { username, email, password }
       : { identifier: email, password };
@@ -33,36 +61,48 @@ export default function AuthPage() {
 
       const data = await res.json();
 
+      // Interception des codes HTTP d'échec (ex: 400 Bad Request, 401 Unauthorized)
       if (!res.ok) {
         throw new Error(data.error?.message || "Une erreur est survenue");
       }
 
       if (isRegister) {
-        // --- CAS : INSCRIPTION REUSSIE ---
+        // --- CAS 1 : INSCRIPTION RÉUSSIE ---
         setSuccess(
           "🎉 Inscription réussie ! Connectez-vous maintenant avec vos identifiants.",
         );
-        setIsRegister(false); // Redirige visuellement l'utilisateur vers la vue Login
-        setPassword(""); // Efface le mot de passe par sécurité
-        setUsername(""); // Efface le nom d'utilisateur
+        // Bascule automatiquement l'interface sur la vue "Connexion"
+        setIsRegister(false); 
+
+        // Mesures de sécurité et nettoyage des champs de saisie
+        setPassword("");
+        setUsername("");
       } else {
-        // --- CAS : CONNEXION REUSSIE ---
+        // --- CAS 2 : CONNEXION RÉUSSIE ---
+        // Stockage du jeton JWT et du profil de l'utilisateur dans le stockage local du navigateur
         localStorage.setItem("token", data.jwt);
         localStorage.setItem("user", JSON.stringify(data.user));
 
+        // Redirection vers l'espace applicatif
         router.push("/dashboard");
+
+        // Force Next.js à rafraîchir l'arbre de composants serveurs pour consommer immédiatement la nouvelle session
         router.refresh();
       }
     } catch (err: any) {
-      setError(err.message);
+      // Capture l'exception et hydrate l'état d'erreur pour l'affichage utilisateur
+      setError(err.message); 
     } finally {
-      setLoading(false);
+      // Libère le formulaire quel que soit le dénouement de la requête
+      setLoading(false); 
     }
   };
 
   return (
+    // Centrage de la carte d'authentification sur l'écran
     <div className="flex min-h-screen items-center justify-center bg-slate-50/50 p-6">
       <div className="w-full max-w-md rounded-2xl border border-slate-200/60 bg-white p-8 shadow-sm">
+        {/* Titres et textes dynamiques adaptés au contexte */}
         <h1 className="text-2xl font-black text-slate-900 tracking-tight text-center mb-2">
           {isRegister ? "Créer un compte" : "Se connecter à StreamDash"}
         </h1>
@@ -72,14 +112,14 @@ export default function AuthPage() {
             : "Accédez à votre espace de rendu asynchrone."}
         </p>
 
-        {/* Message d'Erreur */}
+        {/* Banner d'affichage d'erreur conditionnel */}
         {error && (
           <div className="mb-4 rounded-xl bg-red-50 p-3.5 text-xs font-semibold text-red-600 border border-red-100">
             ⚠️ {error}
           </div>
         )}
 
-        {/* Message de Succès Suite Inscription */}
+        {/* Banner d'affichage de succès conditionnel */}
         {success && (
           <div className="mb-4 rounded-xl bg-emerald-50 p-3.5 text-xs font-semibold text-emerald-600 border border-emerald-100">
             {success}
@@ -87,6 +127,7 @@ export default function AuthPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Champ Nom d'utilisateur : Affiché uniquement en mode inscription */}
           {isRegister && (
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -131,6 +172,7 @@ export default function AuthPage() {
             />
           </div>
 
+          {/* Bouton d'action principal doté d'un style d'attente (disabled) pendant le traitement réseau */}
           <button
             type="submit"
             disabled={loading}
@@ -144,12 +186,16 @@ export default function AuthPage() {
           </button>
         </form>
 
+        {/* Section Bas de page : Lien d'alternance des modes (Connexion / Inscription) */}
         <div className="mt-6 text-center">
           <button
             onClick={() => {
-              setIsRegister(!isRegister);
-              setError("");
-              setSuccess(""); // Nettoie les messages d'état lors du switch manuel
+              // Inverse le booléen d'état
+              setIsRegister(!isRegister); 
+              // Réinitialise les erreurs pour une transition fluide
+              setError(""); 
+              // Réinitialise les succès pour une transition fluide
+              setSuccess(""); 
             }}
             className="text-xs font-semibold text-indigo-600 hover:underline cursor-pointer"
           >

@@ -1,27 +1,36 @@
 // src/app/dashboard/_components/CommentsBlock.tsx
+// Requis car le composant gère des états locaux, des hooks de cycle de vie et le stockage localStorage
 "use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function CommentsBlock() {
+  // Permet de rafraîchir dynamiquement les Server Components parents
   const router = useRouter();
+
+  // States pour la gestion des données métiers
   const [comments, setComments] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [selectedPostId, setSelectedPostId] = useState("");
   const [content, setContent] = useState("");
+
+  // States dédiés à la session utilisateur (stockée initialement côté client)
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  // State local pour isoler l'erreur dans ce bloc uniquement
+  // State d'isolation des erreurs : empêche une panne de l'API de faire planter tout le dashboard
   const [hasError, setHasError] = useState(false);
 
+  /**
+   * Fonction asynchrone de récupération des données (Commentaires et Publications)
+   */
   const fetchData = async () => {
     try {
-      // Simulation du délai réseau obligatoire de 1.5 seconde
+      // Contrainte du sujet : Simulation du délai réseau imposé de 1.5 seconde
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // ⚠️ SIMULATION D'ERREUR DEMANDÉE : Fausse URL pour forcer l'échec du fetch
+      // SIMULATION D'ERREUR EXIGÉE : Requête volontairement erronée sur une fausse route
+      // Note également les paramètres imbriqués 'populate' requis pour l'hydratation relationnelle complète sous Strapi v4/v5
       const resCom = await fetch(
         "http://localhost:1337/api/comments-qui-nexiste-pas?populate[users_permissions_user][populate]=*&populate[post][populate]=*&sort=createdAt:desc",
       );
@@ -32,9 +41,9 @@ export default function CommentsBlock() {
 
       const json = await resCom.json();
       setComments(json.data);
-      setHasError(false);
+      setHasError(false); // Réinitialisation de l'état en cas de succès alternatif
 
-      // Récupérer la liste des posts pour le select option
+      // Récupération secondaire de la liste des posts pour alimenter le sélecteur d'options
       const resPosts = await fetch("http://localhost:1337/api/posts");
       if (resPosts.ok) {
         const jsonPosts = await resPosts.json();
@@ -42,10 +51,14 @@ export default function CommentsBlock() {
       }
     } catch (error) {
       console.error("Erreur isolée capturée sur CommentsBlock :", error);
-      setHasError(true); // Active l'interface d'erreur de repli locale
+      // Interception locale : le bloc passe en mode secours sans affecter l'arborescence globale
+      setHasError(true);
     }
   };
 
+  /**
+   * Cycle de vie initial : Initialisation des données et hydratation de la session client
+   */
   useEffect(() => {
     fetchData();
     const storedUser = localStorage.getItem("user");
@@ -54,6 +67,9 @@ export default function CommentsBlock() {
     if (storedToken) setToken(storedToken);
   }, []);
 
+  /**
+   * Soumission du formulaire : Création d'une nouvelle interaction sous Strapi
+   */
   const handleCreateComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !user) return alert("Vous devez être connecté !");
@@ -63,25 +79,31 @@ export default function CommentsBlock() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        // Injection du token JWT pour authentifier la requête
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         data: {
           content,
+          // Liaison relationnelle Many-to-One vers la publication
           post: selectedPostId,
+          // Liaison relationnelle Many-to-One vers l'auteur
           users_permissions_user: user.id,
         },
       }),
     });
 
     if (res.ok) {
+      // Reset du champ texte
       setContent("");
+      // Rechargement immédiat du flux de commentaires local
       fetchData();
+      // Force Next.js à rafraîchir les données des Server Components parents (comme les KPI)
       router.refresh();
     }
   };
 
-  // Rendu alternatif de secours (Fallback) si une erreur survient
+  // Rendu alternatif (Fallback local) : Activé uniquement si le bloc rencontre un échec réseau
   if (hasError) {
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50/50 p-6 text-center h-full flex flex-col items-center justify-center min-h-[350px]">
@@ -103,6 +125,7 @@ export default function CommentsBlock() {
     );
   }
 
+  // Rendu nominal standard du bloc
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm hover:shadow-md transition-all duration-200">
       <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
@@ -121,6 +144,7 @@ export default function CommentsBlock() {
         </div>
       </div>
 
+      {/* Rendu conditionnel du formulaire basé sur l'état de session globale */}
       {user ? (
         <form
           onSubmit={handleCreateComment}
@@ -160,18 +184,21 @@ export default function CommentsBlock() {
         </p>
       )}
 
+      {/* Section d'affichage des commentaires avec traitement structurel adaptatif */}
       <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
         {comments.length > 0 ? (
           comments.map((comment: any) => {
+            // Normalisation pour s'adapter aux formats d'API Strapi (v4 attributs vs v5 direct)
             const attr = comment.attributes ? comment.attributes : comment;
 
+            // Extraction sécurisée des données de l'auteur
             const userData =
               attr.users_permissions_user?.data?.attributes ||
               attr.users_permissions_user?.data ||
               comment.users_permissions_user;
-
             const commentator = userData?.username || "Anonyme";
 
+            // Extraction sécurisée du titre de la publication ciblée
             const postData = attr.post?.data?.attributes || attr.post?.data;
             const postTitle = postData?.title || "un post";
 

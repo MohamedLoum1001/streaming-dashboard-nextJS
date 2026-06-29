@@ -1,31 +1,53 @@
-"use client";
-
+// src/app/auth/register/page.tsx
+// Requis : Ce composant d'inscription manipule des états locaux (useState), interagit avec le routeur et utilise le localStorage
+"use client"; 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+// Composant Next.js optimisé pour la navigation interne sans rechargement de page
+import Link from "next/link"; 
 
+/**
+ * Composant RegisterPage : Gère la création de nouveaux comptes utilisateurs.
+ * Connecté nativement à l'endpoint d'inscription de l'instance Strapi (plugin Users-Permissions).
+ */
 export default function RegisterPage() {
-  const router = useRouter();
+  // Permet d'effectuer des redirections programmatiques côté client
+  const router = useRouter(); 
+
+  // États de stockage locaux des informations de saisie
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // États de gestion de l'interface utilisateur (UI) et retours d'API
+   // Capture et affiche les messages d'échec (ex: email déjà pris)
   const [error, setError] = useState("");
+   // Désactive le bouton d'envoi pour éviter le spam de clics pendant le traitement
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Gestionnaire de soumission du formulaire d'inscription
+   */
   const handleRegister = async (e: React.FormEvent) => {
+     // Stoppe le comportement de rafraîchissement par défaut du formulaire HTML
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    // Nettoie les erreurs des tentatives précédentes
+    setError(""); 
+    // Verrouille l'interface (état de chargement)
+    setLoading(true); 
 
     try {
+      // Envoi de la requête POST à l'API d'inscription locale de Strapi
       const res = await fetch("http://localhost:1337/api/auth/local/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
+        // Payload contenant les identifiants requis
+        body: JSON.stringify({ username, email, password }), 
       });
 
       const data = await res.json();
 
+      // Interception des échecs de validation de Strapi (Statut HTTP != 2xx)
       if (!res.ok) {
         throw new Error(
           data.error?.message ||
@@ -33,24 +55,30 @@ export default function RegisterPage() {
         );
       }
 
-      // On stocke temporairement un message de succès pour la page de login
+      // --- CAS : INSCRIPTION RÉUSSIE ---
+      // Astuce UX : On stocke temporairement un message de notification dans le navigateur.
+      // Cela permettra à la page de connexion (Login) de le lire et d'afficher un badge de bienvenue vert.
       localStorage.setItem(
         "register_success",
         "Inscription réussie ! Connectez-vous maintenant.",
       );
 
-      // Redirection vers la page de login
+      // Redirection programmatique instantanée de l'étudiant vers la page d'authentification
       router.push("/auth/login");
     } catch (err: any) {
-      setError(err.message);
+      // Hydrate le state d'erreur pour alerter visuellement l'utilisateur
+      setError(err.message); 
     } finally {
-      setLoading(false);
+      // Libère le formulaire à la fin du traitement
+      setLoading(false); 
     }
   };
 
   return (
+    // Centrage absolu de la carte d'inscription sur l'écran via Flexbox
     <div className="flex min-h-screen items-center justify-center bg-slate-50/50 p-6">
       <div className="w-full max-w-md rounded-2xl border border-slate-200/60 bg-white p-8 shadow-sm">
+        {/* Section En-tête */}
         <h1 className="text-2xl font-black text-slate-900 tracking-tight text-center mb-2">
           Créer un compte
         </h1>
@@ -58,12 +86,14 @@ export default function RegisterPage() {
           Rejoignez la communauté dès aujourd'hui.
         </p>
 
+        {/* Bannière d'affichage d'erreur conditionnelle */}
         {error && (
           <div className="mb-4 rounded-xl bg-red-50 p-3.5 text-xs font-semibold text-red-600 border border-red-100">
             ⚠️ {error}
           </div>
         )}
 
+        {/* Formulaire d'inscription */}
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -107,6 +137,7 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* Bouton d'action adaptatif : affiche un indicateur de chargement textuel et se désactive (disabled) pendant la requête */}
           <button
             type="submit"
             disabled={loading}
@@ -116,6 +147,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
+        {/* Pied de la carte : Lien de redirection vers le login équipé du composant optimisé <Link> */}
         <div className="mt-6 text-center">
           <p className="text-xs text-slate-500">
             Déjà un compte ?{" "}
